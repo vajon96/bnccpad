@@ -1,0 +1,54 @@
+@import "tailwindcss";
+@import "react-quill-new/dist/quill.snow.css";
+
+@layer base {
+  :root {
+    --bncc-green: #2D5016;
+    --bncc-gold: #FFD700;
+    --bncc-red: #DC2626;
+  }
+
+  body {
+    @apply bg-zinc-50 text-zinc-900;
+  }
+}
+
+@layer utilities {
+  .a4-page {
+    width: 210mm;
+    min-height: 297mm;
+    background: white;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    margin: 0 auto;
+    position: relative;
+    box-sizing: border-box;
+  }
+
+  @media print {
+    body {
+      background: none;
+      padding: 0;
+    }
+    .no-print {
+      display: none !important;
+    }
+    .a4-page {
+      margin: 0;
+      box-shadow: none;
+      width: 210mm;
+      height: 297mm;
+    }
+  }
+}
+
+/* Scrollbar styling */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  @apply bg-zinc-300 rounded-full hover:bg-zinc-400 transition-colors;
+}
