@@ -23,7 +23,6 @@ const formats = [
   'underline',
   'strike',
   'list',
-  'bullet',
   'align',
   'link',
 ];

@@ -30,14 +30,10 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
   return (
     <div
       ref={innerRef}
-      className="a4-page p-[25mm] font-['Inter'] flex flex-col relative overflow-hidden"
-      style={{
-        paddingTop: `${marginTop}mm`,
-        paddingBottom: `${marginBottom}mm`,
-      }}
+      className="a4-page p-[40px] font-['Hind_Siliguri'] flex flex-col relative overflow-hidden"
     >
       {/* Watermark */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.05] pointer-events-none z-0">
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.07] pointer-events-none z-0">
         <img
           src="https://i.ibb.co/Fb3R6wR/Bncc-logo.png"
           alt="BNCC Watermark"
@@ -48,57 +44,58 @@ export const DocumentPreview: React.FC<DocumentPreviewProps> = ({
 
       <div className="relative z-10 flex flex-col h-full">
         {/* Header */}
-        <header className="flex justify-between items-center mb-6">
+        <header className="flex justify-between items-center mb-4">
           <img
             src="https://i.ibb.co/SBfzG9K/logo-removebg-preview-2.png"
             alt="City College Logo"
-            className="h-20 w-auto"
+            className="h-[100px] w-auto"
             referrerPolicy="no-referrer"
           />
           <div className="text-center">
-            <h1 className="text-2xl font-bold text-[#DC2626]">বাংলাদেশ ন্যাশনাল ক্যাডেট কোর</h1>
-            <h2 className="text-xl font-semibold text-zinc-800">কক্সবাজার সিটি কলেজ</h2>
-            <h2 className="text-xl font-bold text-[#DC2626]">মিশ্র প্লাটুন (সেনা শাখা)</h2>
-            <p className="text-sm font-medium">কক্সবাজার সদর</p>
+            <h2 className="text-2xl font-bold text-[#DC2626]">বাংলাদেশ ন্যাশনাল ক্যাডেট কোর</h2>
+            <h3 className="text-xl font-semibold">কক্সবাজার সিটি কলেজ</h3>
+            <h3 className="text-xl font-bold text-[#DC2626]">মিশ্র প্লাটুন (সেনা শাখা)</h3>
+            <p className="text-base font-medium">কক্সবাজার সদর</p>
           </div>
           <img
             src="https://i.ibb.co/Fb3R6wR/Bncc-logo.png"
             alt="BNCC Logo"
-            className="h-20 w-auto"
+            className="h-[100px] w-auto"
             referrerPolicy="no-referrer"
           />
         </header>
 
-        <div className="text-center text-xs text-zinc-500 mb-2">
+        <div className="text-center text-xs mb-2">
           ইমেইল: coxcitycollege@gmail.com, cccbncc@gmail.com
         </div>
         
-        <div className="border-t-2 border-black mb-4"></div>
+        <hr className="border-black border-t-2 my-3" />
 
         {/* Info Line */}
-        <div className="flex justify-between text-sm font-bold mb-8">
-          <div>সূত্র নং: {memoNo || '____________________'}</div>
-          <div>তারিখ: {date || '____/____/________'}</div>
+        <div className="flex justify-between text-base font-medium mb-6">
+          <div className="memo-preview">সূত্র নং: {memoNo || '____________________'}</div>
+          <div className="date-preview">তারিখ: {date || '____/____/________'}</div>
         </div>
 
         {/* Content Body */}
         <div
-          className="flex-grow prose prose-sm max-w-none break-words"
+          className="flex-grow main-body-preview min-h-[180mm]"
           style={{
             fontSize: `${fontSize}px`,
             lineHeight: lineHeight,
+            paddingTop: `${marginTop}px`,
+            paddingBottom: `${marginBottom}px`,
           }}
           dangerouslySetInnerHTML={{ __html: content }}
         />
 
         {/* Footer Signature */}
-        <footer className="mt-auto self-end text-right text-sm leading-relaxed">
-          <div className="font-bold">
-            <span className="text-blue-700 mr-1">পিইউও</span> উজ্জ্বল কান্তি দেব
-          </div>
-          <div>প্লাটুন কমান্ডার</div>
-          <div>বিএনসিসি (<span className="text-[#DC2626]">সেনা শাখা</span>)</div>
-          <div>কক্সবাজার সিটি কলেজ প্লাটুন</div>
+        <footer className="text-right mt-6 text-base leading-relaxed">
+          <span className="text-blue-700 font-semibold">পিইউও </span>
+          উজ্জ্বল কান্তি দেব<br />
+          প্লাটুন কমান্ডার<br />
+          বিএনসিসি (<span className="text-red-600">সেনা শাখা</span>)<br />
+          কক্সবাজার সিটি কলেজ প্লাটুন
         </footer>
       </div>
     </div>

@@ -83,15 +83,24 @@ export default function App() {
   // --- State ---
   const [content, setContent] = useState<string>(TEMPLATES[0].content);
   const [memoNo, setMemoNo] = useState<string>('');
-  const [date, setDate] = useState<string>(new Date().toLocaleDateString('bn-BD'));
+  const [date, setDate] = useState<string>('____/____/________');
   const [fontSize, setFontSize] = useState<number>(14);
   const [lineHeight, setLineHeight] = useState<number>(1.6);
   const [marginTop, setMarginTop] = useState<number>(15);
   const [marginBottom, setMarginBottom] = useState<number>(15);
+  const [pageSize, setPageSize] = useState<'a4' | 'legal' | 'letter'>('a4');
+  const [pageCount, setPageCount] = useState<number>(1);
   const [isGenerating, setIsGenerating] = useState(false);
   const [sidebarTab, setSidebarTab] = useState<'templates' | 'settings'>('templates');
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
 
   const previewRef = useRef<HTMLDivElement>(null);
+
+  // Bengali Number Conversion
+  const toBengaliNumber = (str: string) => {
+    const bengaliNumbers = ['০', '১', '২', '৩', '৪', '৫', '৬', '৭', '৮', '৯'];
+    return String(str).replace(/\d/g, (digit) => bengaliNumbers[parseInt(digit)]);
+  };
 
   // --- Handlers ---
   const handleExportPDF = async () => {
@@ -99,20 +108,38 @@ export default function App() {
     setIsGenerating(true);
     
     try {
+      const { jsPDF } = await import('jspdf');
+      
+      let dimensions: [number, number];
+      switch(pageSize) {
+        case 'legal': dimensions = [215.9, 355.6]; break;
+        case 'letter': dimensions = [215.9, 279.4]; break;
+        default: dimensions = [210, 297];
+      }
+
+      const pdf = new jsPDF({
+        orientation: 'portrait',
+        unit: 'mm',
+        format: pageSize === 'a4' ? 'a4' : dimensions,
+      });
+      
       const canvas = await html2canvas(previewRef.current, {
         scale: 2,
         useCORS: true,
         logging: false,
+        width: dimensions[0] * 3.78,
+        height: dimensions[1] * 3.78
       });
       
       const imgData = canvas.toDataURL('image/png');
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4',
-      });
+      pdf.addImage(imgData, 'PNG', 0, 0, dimensions[0], dimensions[1]);
+
+      // Add extra pages if needed
+      for(let i = 1; i < pageCount; i++) {
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', 0, 0, dimensions[0], dimensions[1]);
+      }
       
-      pdf.addImage(imgData, 'PNG', 0, 0, 210, 297);
       pdf.save(`BNCC_Pad_${date.replace(/\//g, '-')}.pdf`);
     } catch (error) {
       console.error('PDF Generation Error:', error);
@@ -126,257 +153,212 @@ export default function App() {
   };
 
   const handleAutoDate = () => {
-    setDate(new Date().toLocaleDateString('bn-BD'));
+    const today = new Date();
+    const day = String(today.getDate()).padStart(2, '0');
+    const month = String(today.getMonth() + 1).padStart(2, '0');
+    const year = String(today.getFullYear());
+    const formattedDate = `${toBengaliNumber(day)}/${toBengaliNumber(month)}/${toBengaliNumber(year)}`;
+    setDate(formattedDate);
   };
 
   return (
-    <div className="flex h-screen bg-zinc-50 overflow-hidden font-['Inter']">
-      {/* Sidebar Controls */}
-      <aside className="w-80 bg-white border-r border-zinc-200 flex flex-col no-print z-20 shadow-xl">
-        <div className="p-6 border-b border-zinc-100 bg-[#2D5016] text-[#FFD700]">
-          <div className="flex items-center gap-2 mb-1">
-            <FileText className="w-6 h-6" />
-            <h1 className="text-xl font-bold">BNCC Pad</h1>
+    <div className="min-h-screen bg-gray-100 text-gray-800 font-['Hind_Siliguri']">
+      <div className="container mx-auto p-4 lg:p-8">
+        <header className="text-center mb-8 no-print">
+          <h1 className="text-2xl lg:text-4xl font-bold text-gray-700">BNCC Pad Generator</h1>
+          <p className="text-sm lg:text-md text-gray-500">Cox's Bazar City College Platoon</p>
+        </header>
+
+        {/* Mobile menu toggle */}
+        <div className="lg:hidden flex justify-between items-center mb-4 no-print">
+          <button 
+            onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+            className="p-2 border border-gray-300 rounded-md bg-white"
+          >
+            <div className="flex flex-col gap-1 w-6">
+              <span className="h-0.5 w-full bg-gray-600"></span>
+              <span className="h-0.5 w-full bg-gray-600"></span>
+              <span className="h-0.5 w-full bg-gray-600"></span>
+            </div>
+          </button>
+          <div className="flex gap-2">
+            <button onClick={handlePrint} className="bg-blue-600 text-white font-bold py-2 px-3 rounded-lg flex items-center gap-1 text-sm">
+              <Printer className="w-4 h-4" /> Print
+            </button>
+            <button onClick={handleExportPDF} className="bg-green-600 text-white font-bold py-2 px-3 rounded-lg flex items-center gap-1 text-sm">
+              <Download className="w-4 h-4" /> PDF
+            </button>
           </div>
-          <p className="text-xs opacity-80">Smart Document Generator</p>
         </div>
 
-        {/* Tab Navigation */}
-        <div className="flex border-b border-zinc-100">
-          <button 
-            onClick={() => setSidebarTab('templates')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-              sidebarTab === 'templates' 
-                ? 'border-[#2D5016] text-[#2D5016]' 
-                : 'border-transparent text-zinc-500 hover:text-zinc-700'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Layout className="w-4 h-4" />
-              Templates
+        <div className="flex flex-col lg:flex-row gap-8">
+          {/* Controls */}
+          <aside className={`lg:w-1/3 bg-white p-4 lg:p-6 rounded-lg shadow-lg no-print transition-all ${isMobileMenuOpen ? 'block' : 'hidden lg:block'}`}>
+            <div className="flex justify-between items-center mb-4 border-b pb-2">
+              <h2 className="text-xl font-semibold">Controls</h2>
+              <button onClick={() => setSidebarTab(sidebarTab === 'templates' ? 'settings' : 'templates')} className="text-xs font-bold text-[#2D5016] uppercase underline">
+                {sidebarTab === 'templates' ? 'Go to Settings' : 'Go to Templates'}
+              </button>
             </div>
-          </button>
-          <button 
-            onClick={() => setSidebarTab('settings')}
-            className={`flex-1 py-3 text-sm font-medium transition-colors border-b-2 ${
-              sidebarTab === 'settings' 
-                ? 'border-[#2D5016] text-[#2D5016]' 
-                : 'border-transparent text-zinc-500 hover:text-zinc-700'
-            }`}
-          >
-            <div className="flex items-center justify-center gap-2">
-              <Settings2 className="w-4 h-4" />
-              Settings
-            </div>
-          </button>
-        </div>
 
-        <div className="flex-grow overflow-y-auto p-4 space-y-6">
-          {sidebarTab === 'templates' ? (
-            <div className="space-y-4">
-              <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-2">
-                Available Templates
-              </div>
-              {TEMPLATES.map((template) => (
-                <button
-                  key={template.id}
-                  onClick={() => setContent(template.content)}
-                  className="w-full flex items-center justify-between p-3 rounded-lg border border-zinc-100 bg-zinc-50 hover:bg-white hover:border-[#2D5016] hover:shadow-md transition-all group"
+            <AnimatePresence mode="wait">
+              {sidebarTab === 'templates' ? (
+                <motion.div 
+                  initial={{ opacity: 0, x: -20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="space-y-4"
                 >
-                  <div className="text-left">
-                    <div className="text-sm font-bold text-zinc-800 group-hover:text-[#2D5016] transition-colors">{template.name}</div>
-                    <div className="text-[10px] text-zinc-500">{template.category}</div>
+                  <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider px-2">Templates</div>
+                  {TEMPLATES.map((template) => (
+                    <button
+                      key={template.id}
+                      onClick={() => setContent(template.content)}
+                      className="w-full flex items-center justify-between p-3 rounded-lg border border-zinc-100 bg-zinc-50 hover:border-[#2D5016] transition-all"
+                    >
+                      <div className="text-left font-bold text-sm">{template.name}</div>
+                      <ChevronRight className="w-4 h-4 text-zinc-400" />
+                    </button>
+                  ))}
+                </motion.div>
+              ) : (
+                <motion.div 
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: -20 }}
+                  className="space-y-6"
+                >
+                  {/* Document Settings */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500">Page Size</label>
+                      <select 
+                        value={pageSize}
+                        onChange={(e) => setPageSize(e.target.value as any)}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        <option value="a4">A4 (Default)</option>
+                        <option value="legal">Legal</option>
+                        <option value="letter">Letter</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500">Page Count</label>
+                      <select 
+                        value={pageCount}
+                        onChange={(e) => setPageCount(Number(e.target.value))}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md text-sm"
+                      >
+                        {[1, 2, 4, 8].map(n => <option key={n} value={n}>{n} Page{n > 1 ? 's' : ''}</option>)}
+                      </select>
+                    </div>
                   </div>
-                  <ChevronRight className="w-4 h-4 text-zinc-400 group-hover:text-[#2D5016] transition-transform group-hover:translate-x-1" />
-                </button>
-              ))}
-            </div>
-          ) : (
-            <div className="space-y-6">
-              {/* Document Info */}
-              <div className="space-y-4">
-                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Document Info</div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">সূত্র নং</label>
-                  <div className="relative">
-                    <Hash className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
-                    <input 
-                      type="text" 
-                      value={memoNo}
-                      onChange={(e) => setMemoNo(e.target.value)}
-                      className="w-full pl-10 pr-4 py-2 text-sm border border-zinc-200 rounded-md focus:ring-2 focus:ring-[#2D5016] focus:border-transparent outline-none"
-                      placeholder="সূত্র নং লিখুন..."
-                    />
-                  </div>
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-zinc-500 mb-1">তারিখ</label>
-                  <div className="flex gap-2">
-                    <div className="relative flex-grow">
-                      <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-400" />
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">সূত্র নং</label>
                       <input 
                         type="text" 
-                        value={date}
-                        onChange={(e) => setDate(e.target.value)}
-                        className="w-full pl-10 pr-4 py-2 text-sm border border-zinc-200 rounded-md focus:ring-2 focus:ring-[#2D5016] focus:border-transparent outline-none"
+                        value={memoNo}
+                        onChange={(e) => setMemoNo(e.target.value)}
+                        className="w-full mt-1 p-2 border border-gray-300 rounded-md"
                       />
                     </div>
-                    <button 
-                      onClick={handleAutoDate}
-                      className="p-2 bg-zinc-100 rounded-md hover:bg-zinc-200 transition-colors"
-                      title="আজকের তারিখ"
-                    >
-                      <Plus className="w-4 h-4" />
-                    </button>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-600">তারিখ</label>
+                      <div className="flex gap-2 mt-1">
+                        <input 
+                          type="text" 
+                          value={date}
+                          onChange={(e) => setDate(e.target.value)}
+                          placeholder="dd/mm/yyyy"
+                          className="w-full p-2 border border-gray-300 rounded-md"
+                        />
+                        <button onClick={handleAutoDate} className="p-2 bg-blue-500 text-white rounded-md">
+                          <Calendar className="w-5 h-5" />
+                        </button>
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              {/* Typography */}
-              <div className="space-y-4">
-                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Appearance</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1">Font Size</label>
-                    <input 
-                      type="number" 
-                      value={fontSize}
-                      onChange={(e) => setFontSize(Number(e.target.value))}
-                      className="w-full px-4 py-2 text-sm border border-zinc-200 rounded-md outline-none"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600">Font Size</label>
+                      <input type="number" value={fontSize} onChange={(e) => setFontSize(Number(e.target.value))} className="w-full mt-1 p-2 border border-gray-300 rounded-md" />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-600">Line Spacing</label>
+                      <input type="number" step="0.1" value={lineHeight} onChange={(e) => setLineHeight(Number(e.target.value))} className="w-full mt-1 p-2 border border-gray-300 rounded-md" />
+                    </div>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1">Line Height</label>
-                    <input 
-                      type="number" 
-                      step="0.1"
-                      value={lineHeight}
-                      onChange={(e) => setLineHeight(Number(e.target.value))}
-                      className="w-full px-4 py-2 text-sm border border-zinc-200 rounded-md outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
 
-              {/* Layout */}
-              <div className="space-y-4">
-                <div className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Margins (mm)</div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1">Top</label>
-                    <input 
-                      type="number" 
-                      value={marginTop}
-                      onChange={(e) => setMarginTop(Number(e.target.value))}
-                      className="w-full px-4 py-2 text-sm border border-zinc-200 rounded-md outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-zinc-500 mb-1">Bottom</label>
-                    <input 
-                      type="number" 
-                      value={marginBottom}
-                      onChange={(e) => setMarginBottom(Number(e.target.value))}
-                      className="w-full px-4 py-2 text-sm border border-zinc-200 rounded-md outline-none"
-                    />
-                  </div>
-                </div>
-              </div>
+            {/* Bottom Actions */}
+            <div className="mt-8 space-y-3">
+              <button onClick={handlePrint} className="w-full bg-blue-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2">
+                <Printer className="w-5 h-5" /> Print Document
+              </button>
+              <button 
+                onClick={handleExportPDF} 
+                disabled={isGenerating}
+                className="w-full bg-green-600 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center gap-2 disabled:opacity-50"
+              >
+                {isGenerating ? 'Generating...' : <><Download className="w-5 h-5" /> Download as PDF</>}
+              </button>
             </div>
-          )}
-        </div>
+          </aside>
 
-        {/* Action Buttons */}
-        <div className="p-4 border-t border-zinc-100 bg-zinc-50 space-y-2">
-          <button 
-            onClick={handleExportPDF}
-            disabled={isGenerating}
-            className="w-full py-3 px-4 bg-[#2D5016] text-white rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-[#1f3a10] transition-colors disabled:opacity-50"
-          >
-            {isGenerating ? (
-              <span className="animate-pulse">Generating...</span>
-            ) : (
-              <>
-                <Download className="w-4 h-4" />
-                Download PDF
-              </>
-            )}
-          </button>
-          <button 
-            onClick={handlePrint}
-            className="w-full py-3 px-4 bg-zinc-200 text-zinc-800 rounded-lg font-bold flex items-center justify-center gap-2 hover:bg-zinc-300 transition-colors"
-          >
-            <Printer className="w-4 h-4" />
-            Print Document
-          </button>
-        </div>
-      </aside>
-
-      {/* Main Content Area */}
-      <main className="flex-grow flex flex-col overflow-hidden relative">
-        {/* Editor Area */}
-        <div className="flex-grow flex flex-col p-8 overflow-y-auto no-print">
-          <div className="max-w-4xl w-full mx-auto space-y-8">
-            <div className="flex justify-between items-end">
-              <div>
-                <h2 className="text-2xl font-bold text-zinc-800">Editor</h2>
-                <p className="text-sm text-zinc-500">Edit your document content here</p>
-              </div>
-              <div className="flex gap-2">
-                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-zinc-600 bg-white border border-zinc-200 rounded-md hover:bg-zinc-50">
-                  <Save className="w-4 h-4" />
-                  Save as Draft
-                </button>
-                <button className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-red-600 bg-red-50 border border-red-100 rounded-md hover:bg-red-100">
-                  <Trash2 className="w-4 h-4" />
-                  Clear
-                </button>
-              </div>
+          {/* Editor & Preview */}
+          <div className="lg:w-2/3 space-y-8 flex flex-col items-center">
+            {/* Editor */}
+            <div className="w-full bg-white p-6 rounded-lg shadow-lg no-print">
+              <h2 className="text-xl font-bold mb-4">Document Content</h2>
+              <RichTextEditor value={content} onChange={setContent} />
             </div>
 
-            <RichTextEditor value={content} onChange={setContent} />
-
-            <div className="flex items-center gap-4 py-12 border-t border-zinc-200">
-              <div className="w-12 h-12 rounded-full bg-[#2D5016]/10 flex items-center justify-center text-[#2D5016]">
-                <History className="w-6 h-6" />
-              </div>
-              <div>
+            {/* Preview Area */}
+            <div className="flex flex-col items-center gap-4 w-full">
+              <div className="text-center no-print">
                 <h3 className="text-lg font-bold">Live Preview</h3>
-                <p className="text-sm text-zinc-500">Check how your document will look after export</p>
+                <p className="text-xs text-gray-500 capitalize">{pageSize} | {pageCount} Page(s)</p>
               </div>
-            </div>
-            
-            {/* Embedded Live Preview */}
-            <div className="flex justify-center pb-20">
-              <div className="scale-75 origin-top">
-                <DocumentPreview 
-                  innerRef={previewRef}
-                  content={content}
-                  memoNo={memoNo}
-                  date={date}
-                  fontSize={fontSize}
-                  lineHeight={lineHeight}
-                  marginTop={marginTop}
-                  marginBottom={marginBottom}
-                />
+
+              <div className="overflow-auto w-full flex flex-col items-center gap-4 pb-10">
+                <div className="origin-top" style={{ transform: 'scale(var(--preview-scale, 1))' }}>
+                  <DocumentPreview 
+                    innerRef={previewRef}
+                    content={content}
+                    memoNo={memoNo}
+                    date={date}
+                    fontSize={fontSize}
+                    lineHeight={lineHeight}
+                    marginTop={marginTop}
+                    marginBottom={marginBottom}
+                  />
+                </div>
               </div>
             </div>
           </div>
         </div>
+      </div>
 
-        {/* Floating Print Preview Overlay (Hidden by default, activated on print) */}
-        <div className="hidden print:block absolute inset-0 bg-white z-[100]">
-           <DocumentPreview 
-              content={content}
-              memoNo={memoNo}
-              date={date}
-              fontSize={fontSize}
-              lineHeight={lineHeight}
-              marginTop={marginTop}
-              marginBottom={marginBottom}
-            />
-        </div>
-      </main>
+      {/* Print Overlay */}
+      <div className="hidden print:block bg-white h-screen w-screen absolute inset-0">
+        {[...Array(pageCount)].map((_, i) => (
+          <DocumentPreview 
+            key={i}
+            content={content}
+            memoNo={memoNo}
+            date={date}
+            fontSize={fontSize}
+            lineHeight={lineHeight}
+            marginTop={marginTop}
+            marginBottom={marginBottom}
+          />
+        ))}
+      </div>
     </div>
   );
 }
